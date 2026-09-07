@@ -4,6 +4,7 @@
     "name": "alifurkangokce",
     "url": "https://github.com/alifurkangokce"
   },
+  "description": "driftlint — keep agent context files true: find the claims in CLAUDE.md, AGENTS.md, skills and rule files that your code no longer supports, and review the knowledge your agents add.",
   "plugins": [
     {
       "name": "driftlint",
