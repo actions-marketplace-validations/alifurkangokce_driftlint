@@ -1,4 +1,4 @@
-name: "driftlint"
+name: "driftlint context linter"
 description: "Find the claims in your agent context files (CLAUDE.md, AGENTS.md, skills) that your code no longer supports."
 branding:
   icon: "alert-triangle"
