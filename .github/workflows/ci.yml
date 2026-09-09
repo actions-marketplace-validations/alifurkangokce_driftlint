@@ -23,3 +23,5 @@ jobs:
       - run: npm test
       - name: self-scan
         run: node dist/cli.js . --no-fail
+      - name: twins mirror is in sync
+        run: node dist/cli.js twins . --check
