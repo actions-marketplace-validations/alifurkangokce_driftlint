@@ -68,6 +68,10 @@ export function checkConfigRefs(root: string, entries: WalkEntry[], index: RepoI
     }
 
     const configDir = path.posix.dirname(e.rel);
+    // `$CLAUDE_PROJECT_DIR` means the project this config belongs to, which in a
+    // workspace of nested projects is the directory holding `.claude`, not the
+    // directory the scan happened to start from.
+    const projectRoot = configDir.replace(/(^|\/)\.(claude|cursor|kiro|vscode-agent)$/, "");
     // plugin manifests resolve against the plugin root (the dir holding .claude-plugin)
     const pluginRoot = /(^|\/)\.claude-plugin$/.test(configDir)
       ? path.posix.dirname(configDir)
@@ -86,7 +90,12 @@ export function checkConfigRefs(root: string, entries: WalkEntry[], index: RepoI
       const severity = s.key.startsWith("permissions") ? ("warning" as const) : ("error" as const);
       for (const cand of candidatesFrom(s.value)) {
         if (reported.has(cand.rel)) continue;
-        const bases = [root, path.join(root, pluginRoot), path.join(root, configDir)];
+        const bases = [
+          root,
+          path.join(root, projectRoot),
+          path.join(root, pluginRoot),
+          path.join(root, configDir),
+        ];
         if (bases.some((b) => fs.existsSync(path.join(b, cand.rel)))) continue;
         reported.add(cand.rel);
 

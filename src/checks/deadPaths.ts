@@ -63,6 +63,14 @@ export function checkDeadPaths(
       resolved++;
       continue;
     }
+    // Context files often spell paths from outside the repo for readability
+    // ("Ajanlarim/hafiza/"), while the scan starts inside that directory. Only
+    // accept the stripped form when it actually resolves.
+    const withoutSelfPrefix = stripSelfPrefix(index.root, rel);
+    if (withoutSelfPrefix && existsAt(index.root, fileDir, withoutSelfPrefix)) {
+      resolved++;
+      continue;
+    }
     // dotfile roots like .claude/... may legitimately describe user-global files
     if (rel.startsWith("~") || rel.startsWith("/")) continue;
     const segments = rel.replace(/^\.\//, "").split("/");
@@ -106,6 +114,13 @@ export function checkDeadPaths(
     });
   }
   return { findings, attempted: resolved + findings.length };
+}
+
+/** `<repo-name>/x` written from one directory up, scanned from inside. */
+function stripSelfPrefix(root: string, rel: string): string | null {
+  const rootName = path.basename(path.resolve(root));
+  const segments = rel.replace(/^\.\//, "").split("/");
+  return segments.length > 1 && segments[0] === rootName ? segments.slice(1).join("/") : null;
 }
 
 function existsAt(root: string, fileDir: string, rel: string): boolean {

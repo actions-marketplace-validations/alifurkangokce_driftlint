@@ -42,7 +42,13 @@ export async function applyFixes(
       skipped.push(f);
       continue;
     }
-    const p = path.join(root, f.file);
+    // findings normally come from our own scan, but applyFixes is exported: a
+    // caller's finding must not be able to write outside the scanned root
+    const p = path.resolve(root, f.file);
+    if (p !== path.resolve(root) && !p.startsWith(path.resolve(root) + path.sep)) {
+      skipped.push(f);
+      continue;
+    }
     let content: string;
     try {
       content = fs.readFileSync(p, "utf8");
