@@ -81,6 +81,10 @@ A linter's only capital is trust, so every release prioritizes precision before 
 
 - Nested rule/skill/agent directories, Copilot instruction files, Codex rules, cross-agent skills paths, `AGENTS.override.md` (#23) · opt-in `--user-scope` for the shared 32 KB budget (#24)
 
+## v0.17 — false positives ✅ shipped in 0.17.0
+
+- Self-prefixed paths, nested-project hooks, small plugin skills collapsing, agent trees named `build` — all four from one user's hand-audit of a 139-finding scan · `--fix` path containment · SECURITY.md
+
 ## Later, on demand
 
 - VS Code extension (in-process library, markdownlint model) · sandboxed dry-run of documented commands · org-wide scanning

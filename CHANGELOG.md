@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.17.0 — 2026-09-09
+
+A false-positive pass, from an unusually thorough review by a user who ran driftlint over a personal agent workspace of 139 findings and then checked, by hand, whether any of them were real. None were. Every item below is one of the reasons.
+
+- **Paths written with the repo's own directory name now resolve.** A `CLAUDE.md` inside `Ajanlarim/` that points at `Ajanlarim/hafiza/` was reported dead, because the reference was resolved against the root a second time. Humans write the project name into the path all the time; the checker now strips a leading self-prefix before giving up. The same shortcut applies to markdown link targets.
+- **Hooks in a nested project resolve against that project's root.** `$CLAUDE_PROJECT_DIR` in `sub/project/.claude/settings.json` points at `sub/project`, not the scanned root, so every script reference in a monorepo's inner project read as a `dead-config-ref`.
+- **Small plugin skills collapse instead of flooding.** The "describes another repo" heuristic needed five references before it would fire; installed marketplace skills are small, so a workspace with thirty of them produced ~120 individual `dead-path` errors about a project the user never had. A skill, sub-agent or command where **nothing** resolves and at least three references were tried now collapses to a single warning, the same as a large foreign file.
+- **A skill directory named `build` is no longer invisible.** `build`, `out`, `bin`, `dist`, `target` and `obj` are skipped as build output everywhere in a repo — including, until now, inside `.claude/`, where they are ordinary skill and command names. Build output stays ignored; agent config trees are walked in full.
+- **`--fix` refuses to write outside the scanned root.** The path came from a finding, and every finding came from our own walk, so this was not reachable in practice — but a fixer that resolves a relative path and writes without checking containment is a fixer one crafted context file away from being a problem. It now verifies the resolved target is inside the root and reports anything it skipped.
+
+Also new: [SECURITY.md](SECURITY.md), which states plainly what this tool reads, what it writes, and the one flag that sends anything off your machine.
+
+- 105-test suite; six regression tests, one per item above.
+
 ## 0.16.0 — 2026-09-04
 
 Instruction surfaces. Prompted by a critique on r/codex that was right: the set of files this tool opened was narrower than the set agents actually load.
