@@ -85,6 +85,10 @@ A linter's only capital is trust, so every release prioritizes precision before 
 
 - Self-prefixed paths, nested-project hooks, small plugin skills collapsing, agent trees named `build` — all four from one user's hand-audit of a 139-finding scan · `--fix` path containment · SECURITY.md
 
+## v0.18 — Windows & write-path correctness ✅ shipped in 0.18.0
+
+- Community contribution (#25): Windows paths, CRLF-aware twins, Ubuntu/Windows CI on Node 20 and 22 (closes #10) · column-accurate `--fix` that no longer rewrites prose · Reviewed Memory no longer loses an approved fact to a filename collision · `cd`-scoped commands resolved against the directory the instruction names
+
 ## Later, on demand
 
 - VS Code extension (in-process library, markdownlint model) · sandboxed dry-run of documented commands · org-wide scanning

@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.18.0 — 2026-09-11
+
+Windows support and a correctness pass over the code that writes to your files. Almost all of it is [@saferbayram](https://github.com/saferbayram)'s work in [#25](https://github.com/alifurkangokce/driftlint/pull/25) — twenty files, twenty-one new tests, and a CI matrix that finally covers the platform I can't test on (closes #10).
+
+The one worth spelling out, because it affected the only feature that edits your files. Given a `test:unit` script and this line:
+
+```
+For faster tests, run `npm run test` before pushing.
+```
+
+`driftlint --fix` produced:
+
+```
+For faster test:units, run `npm run test` before pushing.
+```
+
+It rewrote an English word in the prose and left the broken command alone — `indexOf("test")` matched inside "tests" four characters earlier. Fixes now carry the source column from extraction through to the edit, resolve every range against the original line before anything is written, apply right-to-left so one replacement can't shift another's offsets, and abstain entirely when there's no column and the text is ambiguous. A skipped fix is cheap; a corrupted instruction file is not.
 
 - Windows: memory entry paths consistently use `/`; auto-memory discovery recognizes drive letters and backslashes as well as older directory encodings. Tests run on Node 20 without shell glob expansion, with Ubuntu/Windows CI coverage on Node 20 and 22.
 - Twins no longer report drift caused only by LF/CRLF conversion. Sync preserves the target's line endings and leaves an already-current mirror untouched.
