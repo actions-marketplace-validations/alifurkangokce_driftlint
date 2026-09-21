@@ -1,7 +1,7 @@
 {
   "name": "driftlint",
   "description": "Find and fix the claims in your agent context files (CLAUDE.md, AGENTS.md, skills) that your code no longer supports.",
-  "version": "0.1.0",
+  "version": "0.18.0",
   "author": {
     "name": "alifurkangokce",
     "url": "https://github.com/alifurkangokce"

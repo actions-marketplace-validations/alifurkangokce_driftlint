@@ -60,3 +60,16 @@ test("the range grammar the pin check relies on behaves", () => {
   assert.ok(satisfies("0.12.9", "^0.12.0"));
   assert.ok(!satisfies("1.0.0", ">=0.14.1 <1.0.0"));
 });
+
+// The plugin manifest is published through a directory that shows its version
+// to people deciding whether to install. It sat at 0.1.0 through eighteen
+// releases, because nothing read it on the way out.
+test("the plugin manifest carries the version this repo ships", () => {
+  const engine = read("package.json").version;
+  const plugin = read(".claude-plugin/plugin.json").version;
+  assert.equal(
+    plugin,
+    engine,
+    `.claude-plugin/plugin.json says ${plugin} but this repo ships ${engine} — the directory listing would advertise the wrong version.`,
+  );
+});
