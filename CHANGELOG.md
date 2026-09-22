@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.19.0 — 2026-09-22
+
+Nested projects, reported in [#27](https://github.com/alifurkangokce/driftlint/issues/27) by [@kims6305-bjk](https://github.com/kims6305-bjk) with a file:line diagnosis, a minimal repro and a count: **39 of their 44 findings were this one shape.**
+
+A context file inside a nested project writes paths from that project's root. `sub/.agents/skills/myskill/SKILL.md` says `eval/comparison/test-sim/`, meaning `sub/eval/comparison/test-sim/`. References were resolved against the scan root and the file's own directory, so it came back dead — while the did-you-mean hint cheerfully printed the correct location it had just refused to check.
+
+- **The owning project is now a resolution base.** It is derived from the path itself: the parent of the agent-config directory the file sits under (`sub/.agents/…` → `sub`). The report suggested walking up to the nearest `.git`, but their own stated case — vendored mirrors under `.research/` — has no `.git` to find, so the marker had to be something every one of these files already carries.
+- **Consequence worth naming.** Resolving more references pushed some files below the `foreign-context` ratio, so references belonging to the *described* repo started arriving as individual errors instead of one collapsed warning. A file that resolves anything against its own nested project is a nested project's document; what it still can't resolve is that project's surroundings, not this repo's drift. Those findings are now warnings, and say so in the hint.
+- Verified on a real 14-file workspace: error count unchanged at 7, two expert packages went from a vague "7 of 8 don't resolve" to completely clean, and the rest became specific instead of collapsed.
+- 132-test suite.
+
 ## 0.18.0 — 2026-09-11
 
 Windows support and a correctness pass over the code that writes to your files. Almost all of it is [@saferbayram](https://github.com/saferbayram)'s work in [#25](https://github.com/alifurkangokce/driftlint/pull/25) — twenty files, twenty-one new tests, and a CI matrix that finally covers the platform I can't test on (closes #10).

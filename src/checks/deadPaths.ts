@@ -26,6 +26,11 @@ export interface DeadPathResult {
   findings: Finding[];
   /** How many references were actually evaluated (resolved + flagged). */
   attempted: number;
+  /** Of those, how many resolved only against the file's own nested project.
+   *  These say nothing about whether the file describes THIS repo — they are
+   *  the nested package's own files — so the foreign-context ratio ignores
+   *  them and judges on the references that are left. */
+  nestedResolved: number;
 }
 
 /** A path the context file claims exists, but the tree says otherwise. */
@@ -36,7 +41,15 @@ export function checkDeadPaths(
 ): DeadPathResult {
   const findings: Finding[] = [];
   let resolved = 0;
+  let nestedResolved = 0;
   const fileDir = path.dirname(file.path);
+  const project = enclosingProjectRoot(fileDir);
+  /** Did this reference resolve ONLY because the file sits in a nested project? */
+  const viaNestedOnly = (rel: string): boolean =>
+    project !== null &&
+    !fs.existsSync(path.join(index.root, rel)) &&
+    !fs.existsSync(path.join(index.root, fileDir, rel)) &&
+    fs.existsSync(path.join(index.root, project, rel));
 
   for (const ref of refs) {
     const rel = ref.raw.replace(/\/$/, "");
@@ -47,6 +60,7 @@ export function checkDeadPaths(
       if (COMMON_TOOL_FILES.has(ref.raw)) continue;
       if (index.basenames.has(ref.raw) || existsAt(index.root, fileDir, ref.raw)) {
         resolved++;
+        if (!index.basenames.has(ref.raw) && viaNestedOnly(ref.raw)) nestedResolved++;
         continue;
       }
       findings.push({
@@ -61,6 +75,7 @@ export function checkDeadPaths(
 
     if (existsAt(index.root, fileDir, rel)) {
       resolved++;
+      if (viaNestedOnly(rel)) nestedResolved++;
       continue;
     }
     // Context files often spell paths from outside the repo for readability
@@ -113,7 +128,18 @@ export function checkDeadPaths(
       ...(fix ? { fix } : {}),
     });
   }
-  return { findings, attempted: resolved + findings.length };
+  // A file that resolved anything against its own nested project root IS a
+  // nested project's document. What it still can't resolve is far more likely
+  // to be that project's surroundings than drift in the repo being scanned —
+  // so say so, and stop calling it an error (issue #27).
+  if (nestedResolved > 0) {
+    for (const f of findings) {
+      if (f.severity !== "error") continue;
+      f.severity = "warning";
+      f.hint = `${f.hint ? `${f.hint} · ` : ""}this file belongs to the nested project \`${project}\`, and some of its references resolve there — an unresolved one may simply live outside what was scanned.`;
+    }
+  }
+  return { findings, attempted: resolved + findings.length, nestedResolved };
 }
 
 /** `<repo-name>/x` written from one directory up, scanned from inside. */
@@ -123,9 +149,28 @@ function stripSelfPrefix(root: string, rel: string): string | null {
   return segments.length > 1 && segments[0] === rootName ? segments.slice(1).join("/") : null;
 }
 
+/** The directories an agent keeps its own files in. A context file inside one
+ *  of these belongs to the project that OWNS the directory, not to the scan
+ *  root — `sub/.agents/skills/x/SKILL.md` describes `sub/`. */
+const AGENT_CONFIG_SEGMENT = /(^|\/)\.(claude|claude-plugin|cursor|codex|gemini|agents|opencode|github|windsurf|clinerules)(\/|$)/;
+
+/** Where a nested project's own paths resolve from: the parent of the agent
+ *  config directory the file sits under. Null when the file isn't in one, in
+ *  which case its own directory is already the right base. */
+export function enclosingProjectRoot(fileDir: string): string | null {
+  const m = AGENT_CONFIG_SEGMENT.exec(`/${fileDir}`);
+  if (!m) return null;
+  // exec ran against "/" + fileDir, so m.index is the offset of the separator
+  // preceding the config segment — which is where the owning project ends.
+  const owner = fileDir.slice(0, m.index).replace(/\/$/, "");
+  return owner === fileDir ? null : owner;
+}
+
 function existsAt(root: string, fileDir: string, rel: string): boolean {
-  return (
-    fs.existsSync(path.join(root, rel)) ||
-    fs.existsSync(path.join(root, fileDir, rel))
-  );
+  if (fs.existsSync(path.join(root, rel))) return true;
+  if (fs.existsSync(path.join(root, fileDir, rel))) return true;
+  // A vendored or nested project writes paths from its own root. Resolve there
+  // too — issue #27: 39 of one workspace's 44 findings were this one shape.
+  const project = enclosingProjectRoot(fileDir);
+  return project !== null && fs.existsSync(path.join(root, project, rel));
 }
