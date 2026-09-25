@@ -52,7 +52,16 @@ export function checkLinks(
     const segments = rel.split("/");
     if (segments.some((s) => BUILD_DIRS.has(s) || PLACEHOLDER_SEGMENTS.has(s.toLowerCase()))) continue;
 
-    const abs = path.join(index.root, rel);
+    let abs = path.join(index.root, rel);
+    // the same self-prefix habit applies to links: [notes](Ajanlarim/docs/x.md)
+    if (!fs.existsSync(abs)) {
+      const rootName = path.basename(path.resolve(index.root));
+      const parts = rel.split("/");
+      if (parts.length > 1 && parts[0] === rootName) {
+        const stripped = path.join(index.root, parts.slice(1).join("/"));
+        if (fs.existsSync(stripped)) abs = stripped;
+      }
+    }
     if (!fs.existsSync(abs)) {
       const base = segments[segments.length - 1] ?? rel;
       const elsewhere = (index.basenames.get(base) ?? []).filter((p) => p !== rel);

@@ -264,6 +264,10 @@ The overlap is real and growing, so here is the honest split:
 
 The last one is the part nobody else claims: a file can be perfectly formed, well written, correctly sized, and still tell your agent to run a script someone deleted in March.
 
+## What it touches
+
+No runtime dependencies, no install scripts, no telemetry, and no network call — except `--llm`, which is the one flag that sends your context files to the Anthropic API. `scan` writes nothing; `--fix` prompts per edit and only rewrites inside the scanned root. Full statement: [SECURITY.md](SECURITY.md).
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) — next up: an **optional LLM pass** for narrative claims, then **Reviewed Memory**: agents *propose* knowledge at session end, humans approve via PR, git distributes it, and driftlint keeps it honest.

@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.19.0 — 2026-09-22
+
+Nested projects, reported in [#27](https://github.com/alifurkangokce/driftlint/issues/27) by [@kims6305-bjk](https://github.com/kims6305-bjk) with a file:line diagnosis, a minimal repro and a count: **39 of their 44 findings were this one shape.**
+
+A context file inside a nested project writes paths from that project's root. `sub/.agents/skills/myskill/SKILL.md` says `eval/comparison/test-sim/`, meaning `sub/eval/comparison/test-sim/`. References were resolved against the scan root and the file's own directory, so it came back dead — while the did-you-mean hint cheerfully printed the correct location it had just refused to check.
+
+- **The owning project is now a resolution base.** It is derived from the path itself: the parent of the agent-config directory the file sits under (`sub/.agents/…` → `sub`). The report suggested walking up to the nearest `.git`, but their own stated case — vendored mirrors under `.research/` — has no `.git` to find, so the marker had to be something every one of these files already carries.
+- **Consequence worth naming.** Resolving more references pushed some files below the `foreign-context` ratio, so references belonging to the *described* repo started arriving as individual errors instead of one collapsed warning. A file that resolves anything against its own nested project is a nested project's document; what it still can't resolve is that project's surroundings, not this repo's drift. Those findings are now warnings, and say so in the hint.
+- Verified on a real 14-file workspace: error count unchanged at 7, two expert packages went from a vague "7 of 8 don't resolve" to completely clean, and the rest became specific instead of collapsed.
+- 132-test suite.
+
+## 0.18.0 — 2026-09-11
+
+Windows support and a correctness pass over the code that writes to your files. Almost all of it is [@saferbayram](https://github.com/saferbayram)'s work in [#25](https://github.com/alifurkangokce/driftlint/pull/25) — twenty files, twenty-one new tests, and a CI matrix that finally covers the platform I can't test on (closes #10).
+
+The one worth spelling out, because it affected the only feature that edits your files. Given a `test:unit` script and this line:
+
+```
+For faster tests, run `npm run test` before pushing.
+```
+
+`driftlint --fix` produced:
+
+```
+For faster test:units, run `npm run test` before pushing.
+```
+
+It rewrote an English word in the prose and left the broken command alone — `indexOf("test")` matched inside "tests" four characters earlier. Fixes now carry the source column from extraction through to the edit, resolve every range against the original line before anything is written, apply right-to-left so one replacement can't shift another's offsets, and abstain entirely when there's no column and the text is ambiguous. A skipped fix is cheap; a corrupted instruction file is not.
+
+- Windows: memory entry paths consistently use `/`; auto-memory discovery recognizes drive letters and backslashes as well as older directory encodings. Tests run on Node 20 without shell glob expansion, with Ubuntu/Windows CI coverage on Node 20 and 22.
+- Twins no longer report drift caused only by LF/CRLF conversion. Sync preserves the target's line endings and leaves an already-current mirror untouched.
+- Reviewed Memory keeps both approved facts when proposal filenames collide, including collisions introduced between proposing and approving.
+- Command fixes and reviewdog suggestions target the script's source column. Multiple fixes on one line keep their original positions; ambiguous or stale replacements are skipped.
+- Explicit `cd` instructions no longer pass merely because a script or make target exists at the repository root. Separate inline examples keep separate working directories.
+- `ignore` patterns also suppress silent-config and dead-config-ref checks on excluded files, while those files remain available as path evidence.
+
+## 0.17.0 — 2026-09-09
+
+A false-positive pass, from an unusually thorough review by a user who ran driftlint over a personal agent workspace of 139 findings and then checked, by hand, whether any of them were real. None were. Every item below is one of the reasons.
+
+- **Paths written with the repo's own directory name now resolve.** A `CLAUDE.md` inside `Ajanlarim/` that points at `Ajanlarim/hafiza/` was reported dead, because the reference was resolved against the root a second time. Humans write the project name into the path all the time; the checker now strips a leading self-prefix before giving up. The same shortcut applies to markdown link targets.
+- **Hooks in a nested project resolve against that project's root.** `$CLAUDE_PROJECT_DIR` in `sub/project/.claude/settings.json` points at `sub/project`, not the scanned root, so every script reference in a monorepo's inner project read as a `dead-config-ref`.
+- **Small plugin skills collapse instead of flooding.** The "describes another repo" heuristic needed five references before it would fire; installed marketplace skills are small, so a workspace with thirty of them produced ~120 individual `dead-path` errors about a project the user never had. A skill, sub-agent or command where **nothing** resolves and at least three references were tried now collapses to a single warning, the same as a large foreign file.
+- **A skill directory named `build` is no longer invisible.** `build`, `out`, `bin`, `dist`, `target` and `obj` are skipped as build output everywhere in a repo — including, until now, inside `.claude/`, where they are ordinary skill and command names. Build output stays ignored; agent config trees are walked in full.
+- **`--fix` refuses to write outside the scanned root.** The path came from a finding, and every finding came from our own walk, so this was not reachable in practice — but a fixer that resolves a relative path and writes without checking containment is a fixer one crafted context file away from being a problem. It now verifies the resolved target is inside the root and reports anything it skipped.
+
+Also new: [SECURITY.md](SECURITY.md), which states plainly what this tool reads, what it writes, and the one flag that sends anything off your machine.
+
+- 105-test suite; six regression tests, one per item above.
+
 ## 0.16.0 — 2026-09-04
 
 Instruction surfaces. Prompted by a critique on r/codex that was right: the set of files this tool opened was narrower than the set agents actually load.

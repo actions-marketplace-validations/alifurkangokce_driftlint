@@ -2,11 +2,19 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { RepoIndex } from "./types.js";
 
+/** Never walked, anywhere: dependency and VCS trees. */
 const IGNORED_DIRS = new Set([
-  "node_modules", ".git", "dist", "build", "out", "coverage", "vendor",
-  "venv", ".venv", "__pycache__", ".next", ".nuxt", "target", "bin", "obj",
+  "node_modules", ".git", "coverage", "vendor",
+  "venv", ".venv", "__pycache__", ".next", ".nuxt",
   ".idea", ".vs", ".vscode-test",
 ]);
+
+/** Build output — ignored in the repo at large, but NOT inside an agent's own
+ *  config tree, where `build`, `out` and `bin` are ordinary skill and command
+ *  names. A skill at `.claude/skills/build/SKILL.md` must not disappear
+ *  because of a directory-name coincidence. */
+const BUILD_OUTPUT_DIRS = new Set(["dist", "build", "out", "target", "bin", "obj"]);
+const AGENT_DIRS = /(^|\/)\.(claude|claude-plugin|cursor|codex|gemini|agents|opencode|github|windsurf|clinerules|agent-memory)(\/|$)/;
 
 const MAX_DEPTH = 10;
 const MAX_ENTRIES = 200_000;
@@ -22,7 +30,7 @@ export function walk(root: string): WalkEntry[] {
   const entries: WalkEntry[] = [];
   let count = 0;
 
-  const visit = (dir: string, depth: number): void => {
+  const visit = (dir: string, depth: number, inAgentTree = false): void => {
     if (depth > MAX_DEPTH || count > MAX_ENTRIES) return;
     let dirents: fs.Dirent[];
     try {
@@ -35,9 +43,11 @@ export function walk(root: string): WalkEntry[] {
       const rel = path.relative(root, abs).split(path.sep).join("/");
       if (d.isDirectory()) {
         if (IGNORED_DIRS.has(d.name)) continue;
+        const agentTree = inAgentTree || AGENT_DIRS.test(`/${rel}`);
+        if (!agentTree && BUILD_OUTPUT_DIRS.has(d.name)) continue;
         entries.push({ rel, isDir: true });
         count++;
-        visit(abs, depth + 1);
+        visit(abs, depth + 1, agentTree);
       } else if (d.isFile()) {
         entries.push({ rel, isDir: false });
         count++;
